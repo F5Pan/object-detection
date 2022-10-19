@@ -5,7 +5,6 @@ import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense,Conv2D,MaxPooling2D,Flatten
 from keras.utils import np_utils
-import cv2 as cv
 from keras.models import load_model
 
 class Verify:
@@ -15,38 +14,38 @@ class Verify:
         self.img = img  # 原始图像
 
     def verify(self):
-        reImage = cv.resize(self.img, (28, 28))
+        reImage = cv2.resize(self.img, (300, 300))
 
-        imageCvt = cv.cvtColor(reImage, cv.COLOR_BGR2GRAY)
+        imageCvt = cv2.cvtColor(reImage, cv2.COLOR_BGR2GRAY)
         grayImage = imageCvt
         # cv.imshow('number',grayImage)
-        testImage = grayImage.reshape(1, 28, 28, 1).astype('float32') / 255
+        testImage = reImage.reshape(1, 300, 300, 3).astype('float32') / 255
 
-        model = load_model('drug.h5')
+        model = load_model("drug.h5")
         resultRate = model.predict(testImage)
         result = np.argmax(resultRate, axis=1)
-        resultRate1 = '三角 = {:.2f},圓形= {:.2f},膠囊= {:.2f}'.format(resultRate[0][0], resultRate[0][1], resultRate[0][2])
+        resultRate1 = '紅膠囊= {:.2f},三角 = {:.2f},圓形= {:.2f},藍膠囊= {:.2f}'.format(resultRate[0][0], resultRate[0][1], resultRate[0][2],resultRate[0][3])
 
-    # print(resultRate)
-    # print(resultRate[0][0])
-    # print(resultRate[0][1])
-    # print(resultRate[0][2])
         print(resultRate1)
-    # print(result)
 
         rate = resultRate[0][0]
         rate1 = resultRate[0][1]
         rate2 = resultRate[0][2]
+        rate3 = resultRate[0][3]
 
         print(rate)
         print(rate1)
         print(rate2)
+        print(rate3)
+
 
         if (rate > 0.8):
-            str = 'TriangleMintsRed'
+            str = 'CapsuleRed'
         elif (rate1 > 0.8):
-            str = 'CircleYellow'
+            str = 'TriangleMintsRed'
         elif (rate2 > 0.8):
+            str = 'CircleYellow'
+        elif (rate3 > 0.8):
             str = 'CapsuleBlue'
         else:
             str = '都不是'
@@ -84,10 +83,10 @@ m1 = np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
 m2 = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
 imgs = []
 result = []
-
+num1 =23
 # 第一步：高斯
-oranginalimg = cv2.imread("C:\\Users\\wayne\\testImage\\drug7.jpg")
-
+# oranginalimg = cv2.imread("C:\\Users\\wayne\\testImage\\drug14.jpg")
+oranginalimg = cv2.imread("D:\\master\\A\\A"+str(num1)+".jpg")
 oranginalimg = cv2.resize(oranginalimg, (380, 380))
 img = cv2.resize(oranginalimg, (380, 380))
 sobel = cv2.Canny(img, 50, 100)
@@ -185,14 +184,14 @@ for i in range(1, img3.shape[0] - 1):
 # cv2.imshow("Opencv_canny", sobel)  # 角度值灰度图
 # cv2.imshow("grad_img", img1)  # 梯度幅值图
 # cv2.imshow("max_img", img2)  # 非极大值抑制灰度图
-# cv2.imshow("final_img", img3)  # 最终效果图
+cv2.imshow("final_img", img3)  # 最终效果图
 
 img3 = np.array(img3,np.uint8)
 
 
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25))
 closed = cv2.morphologyEx(img3, cv2.MORPH_CLOSE, kernel)
-# cv2.imshow('closed1', closed)
+cv2.imshow('closed1', closed)
 
 # perform a series of erosions and dilations
 # closed = cv2.erode(closed, None, iterations=4)
@@ -200,7 +199,7 @@ closed = cv2.morphologyEx(img3, cv2.MORPH_CLOSE, kernel)
 #
 # cv2.imshow('closed2', closed)
 
-_,contours,hierarchy = cv2.findContours(closed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+contours,hierarchy = cv2.findContours(closed.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 c = sorted(contours, key=cv2.contourArea, reverse=True)[0]
 
 
@@ -230,20 +229,20 @@ for cnt in contours:
    cv2.rectangle(split_res, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
 
-  num += 1
-  imgs.append(Rotate(cutImage, box, rect).getImg())
-  cv2.imshow(f"cutImg-{num}",Rotate(cutImage, box, rect).getImg())
-  result = Verify(Rotate(cutImage, box, rect).getImg()).verify()
-  print(result)
-  cv2.putText(split_res, result, (x,y-15), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+   num += 1
+   imgs.append(Rotate(cutImage, box, rect).getImg())
+   cv2.imshow(f"cutImg-{num}",Rotate(cutImage, box, rect).getImg())
+   result = Verify(Rotate(cutImage, box, rect).getImg()).verify()
+   print(result)
+   cv2.putText(split_res, result, (x,y-15), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
 
 
-# for i in range(len(imgs)):
-#     cv2.imshow(f"img-{i}", imgs[i])
-#     result.append(Verify(imgs[i]).verify())
-#
-# for i in range(len(result)):
-#     print(result[i])
+for i in range(len(imgs)):
+    cv2.imshow(f"img-{i}", imgs[i])
+    new_img=cv2.resize(imgs[i],(380,380))
+    # new_img.tofile("D:/master/AA/" + 'a'+ str(num1)+'.jpg')
+    # cv2.imwrite("D:/master/AA/" + 'a'+ str(num1)+'.jpg', new_img)
 
 cv2.imshow('split_res', split_res)
 cv2.waitKey(0)
+# print('end')
