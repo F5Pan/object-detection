@@ -6,92 +6,43 @@ from keras.models import Sequential
 from keras.layers import Dense,Conv2D,MaxPooling2D,Flatten
 from keras.utils import np_utils
 from keras.models import load_model
-
-class Verify:
-
-    def __init__(self, img):
-
-        self.img = img  # 原始图像
-
-    def verify(self):
-        reImage = cv2.resize(self.img, (300, 300))
-
-        imageCvt = cv2.cvtColor(reImage, cv2.COLOR_BGR2GRAY)
-        grayImage = imageCvt
-        # cv.imshow('number',grayImage)
-        testImage = reImage.reshape(1, 300, 300, 3).astype('float32') / 255
-
-        model = load_model("drug.h5")
-        resultRate = model.predict(testImage)
-        result = np.argmax(resultRate, axis=1)
-        resultRate1 = '紅膠囊= {:.2f},三角 = {:.2f},圓形= {:.2f},藍膠囊= {:.2f}'.format(resultRate[0][0], resultRate[0][1], resultRate[0][2],resultRate[0][3])
-
-        print(resultRate1)
-
-        rate = resultRate[0][0]
-        rate1 = resultRate[0][1]
-        rate2 = resultRate[0][2]
-        rate3 = resultRate[0][3]
-
-        print(rate)
-        print(rate1)
-        print(rate2)
-        print(rate3)
-
-
-        if (rate > 0.8):
-            str = 'CapsuleRed'
-        elif (rate1 > 0.8):
-            str = 'TriangleMintsRed'
-        elif (rate2 > 0.8):
-            str = 'CircleYellow'
-        elif (rate3 > 0.8):
-            str = 'CapsuleBlue'
-        else:
-            str = '都不是'
-        return str
-
-class Rotate:
-    def __init__(self, img, box, rect):
-
-        self.img = img  # 原始图像
-        self.box = box  # cv2.boxPoints(rect) for OpenCV 3.x 获取最小外接矩形的4个顶点坐标
-        self.rect = rect  # 得到最小外接矩形的（中心(x,y), (宽,高), 旋转角度）
-
-
-    def getImg(self):
-        # 做旋转图像
-        # 这里外接矩形的旋转角度是无法确定的，
-        # 且由于**作者个人**的素材图片的最大选旋转角度不会超过45°,所以这里加以限制
-        a = self.imagecrop(self.img, np.int0(box))
-        return a
-
-    def imagecrop(self, image, box):
-        xs = [x[1] for x in box]
-        ys = [x[0] for x in box]
-        # print(xs)
-        # print(min(xs), max(xs), min(ys), max(ys))
-        cropimage = image[min(xs):max(xs), min(ys):max(ys)]
-        # print(cropimage.shape)
-        # cv2.imwrite('cropimage.png', cropimage)
-        return cropimage
-
-
+import drugVerify
+import ImageCut
 
 
 m1 = np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
 m2 = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
 imgs = []
 result = []
-num1 =23
+folderName = 'BBB'
+grayfolderName= 'BBB'
+picnum =11
+namestr = 'b'
+
 # 第一步：高斯
-# oranginalimg = cv2.imread("C:\\Users\\wayne\\testImage\\drug14.jpg")
-oranginalimg = cv2.imread("D:\\master\\A\\A"+str(num1)+".jpg")
-oranginalimg = cv2.resize(oranginalimg, (380, 380))
-img = cv2.resize(oranginalimg, (380, 380))
+# oranginalimg = cv2.imread("D:\\master\\"+folderName+"\\"+namestr+str(picnum)+".jpg")
+# oranginalimg = cv2.imread("D:\\master\\images\\manyImages\\S__6619259.jpg")
+oranginalimg = cv2.imread("D:\\master\\images\\test2.jpg")
+
+
+# oranginalimg = cv2.resize(oranginalimg, (380, 380))
+# img = cv2.resize(oranginalimg, (380, 380))
+img = oranginalimg.copy()
+
 sobel = cv2.Canny(img, 50, 100)
 img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 img = cv2.GaussianBlur(img, (5, 5), 2)
+
+
+
+h, w = img.shape[:2]                        #获取图像的高和宽
+mask = np.zeros((h+2, w+2), np.uint8)       #掩码长和宽都比输入图像多两个像素点，泛洪填充不会超出掩码的非零边缘
+#进行泛洪填充
+cv2.floodFill(img, mask, (w-1,h-1), (255,255,255), (2,2,2),(3,3,3),8)
+cv2.imshow("floodfill", img)
+
+img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+cv2.imshow("threshold", img)
 
 # 第二步：計算每一點的梯度與方向找到邊緣強度
 img1 = np.zeros(img.shape, dtype="uint8")  # 與原圖大小相同
@@ -179,19 +130,21 @@ for i in range(1, img3.shape[0] - 1):
 
 
 
-# cv2.imshow("original_img", oranginalimg)  # 原始图像
-# cv2.imshow("gray_img", img)  # 灰階高斯
-# cv2.imshow("Opencv_canny", sobel)  # 角度值灰度图
-# cv2.imshow("grad_img", img1)  # 梯度幅值图
-# cv2.imshow("max_img", img2)  # 非极大值抑制灰度图
-cv2.imshow("final_img", img3)  # 最终效果图
+cv2.imshow("original_img", oranginalimg)  # 原始图像
+cv2.imshow("gray_img", img)  # 灰階高斯
+cv2.imshow("Opencv_canny", sobel)  # 角度值灰度图
+cv2.imshow("grad_img", img1)  # 梯度幅值图
+cv2.imshow("max_img", img2)  # 非极大值抑制灰度图
+cv2.imshow("final_img", img3)  # 双阈值检测和边缘连接
 
+
+cv2.imwrite('thresholdTOcanny.jpg',img3)
 img3 = np.array(img3,np.uint8)
 
 
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25))
 closed = cv2.morphologyEx(img3, cv2.MORPH_CLOSE, kernel)
-cv2.imshow('closed1', closed)
+# cv2.imshow('closed1', closed)
 
 # perform a series of erosions and dilations
 # closed = cv2.erode(closed, None, iterations=4)
@@ -224,25 +177,43 @@ for cnt in contours:
   x, y, w, h = cv2.boundingRect(cnt)
   area = w * h
   print(area)
-  # print(' x, y, w, h', x, y, w, h)
+  print(' x, y, w, h', x, y, w, h)
   if 250 < area:
    cv2.rectangle(split_res, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
-
    num += 1
-   imgs.append(Rotate(cutImage, box, rect).getImg())
-   cv2.imshow(f"cutImg-{num}",Rotate(cutImage, box, rect).getImg())
-   result = Verify(Rotate(cutImage, box, rect).getImg()).verify()
-   print(result)
-   cv2.putText(split_res, result, (x,y-15), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+   # cutImg = Rotate(cutImage, box, rect).getImg()
+   cutImg = ImageCut.Rotate(cutImage, box, rect).getImg()
+   size = cutImg.shape
+   w = size[1]  # 宽度
+   h = size[0]  # 高度
+   print(size)
+   print(w)
+   print(h)
+   # cv2.imshow('cutImg', cutImg)
 
+   if w == 0:
+       continue
+   elif h==0:
+       continue
 
-for i in range(len(imgs)):
-    cv2.imshow(f"img-{i}", imgs[i])
-    new_img=cv2.resize(imgs[i],(380,380))
-    # new_img.tofile("D:/master/AA/" + 'a'+ str(num1)+'.jpg')
-    # cv2.imwrite("D:/master/AA/" + 'a'+ str(num1)+'.jpg', new_img)
+   if w>h:
+       output_ROTATE_90_CLOCKWISE = cv2.rotate(cutImg, cv2.ROTATE_90_CLOCKWISE)
+       # cv2.imshow('output_ROTATE_90_CLOCKWISE', output_ROTATE_90_CLOCKWISE)
+   else:
+       output_ROTATE_90_CLOCKWISE = cutImg
+
+   # imgs.append(cutImg)
+   # cv2.imshow(f"cutImg-{num}",output_ROTATE_90_CLOCKWISE)
+   # saveImg = cv2.resize(output_ROTATE_90_CLOCKWISE, (133, 201))
+   # cv2.imwrite("D:\\master\\"+grayfolderName+"\\"+namestr+str(picnum)+".jpg",saveImg);
+   # result = verify.predict(saveImg)
+   # print(result)
+   # cv2.putText(split_res, result, (x,y-15), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+
 
 cv2.imshow('split_res', split_res)
 cv2.waitKey(0)
 # print('end')
+
+
